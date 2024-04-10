@@ -1,0 +1,640 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[1]:
+
+
+get_ipython().run_line_magic('load_ext', 'tensorboard')
+# Clear any logs from previous runs
+
+
+# In[2]:
+
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+#import seaborn as sns
+import os
+import datetime
+from tensorflow import keras
+from sklearn.model_selection import train_test_split,GridSearchCV,RandomizedSearchCV
+from sklearn.preprocessing import MinMaxScaler,OneHotEncoder
+from sklearn.metrics import r2_score
+from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
+import tensorflow as tf
+#physical_devices = tf.config.list_physical_devices('GPU')
+#tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
+from tensorflow.keras.wrappers.scikit_learn import KerasRegressor
+from tensorflow.keras import Sequential, layers, utils, losses
+from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard
+from tensorflow.keras.optimizers import Adam,RMSprop,Adadelta,Adagrad,Adamax,Ftrl,Nadam,Optimizer,SGD
+#from skopt import BayesSearchCV
+#from skopt.space import Real,Categorical,Integer
+from tensorflow.keras.layers import Bidirectional
+from tensorflow.keras import regularizers
+
+from keras_tuner.tuners import BayesianOptimization
+
+import time
+import warnings
+warnings.filterwarnings('ignore')
+
+
+# In[3]:
+
+
+dataset1=pd.read_csv('1-1 s-n-1.0-brb机器学习.CSV')
+dataset2=pd.read_csv("1-2 S-Y-1.0-BRB机器学习.CSV")
+dataset3=pd.read_csv("2-1 M-N-1.0-BRB机器学习.CSV")
+dataset4=pd.read_csv("2-2 M-Y-1.0-BRB机器学习.CSV")
+dataset5=pd.read_csv('3-1 L-N-1.0-BRB机器学习 .CSV')
+dataset6=pd.read_csv("3-2 L-Y-1.0-BRB机器学习.CSV")
+dataset7=pd.read_csv("4-2 W-Y-1.0-BRB机器学习.CSV")
+dataset8=pd.read_csv("5-1 S-N-0.5-BRB机器学习.CSV")
+dataset9=pd.read_csv('5-2 S-Y-0.5-BRB机器学习.CSV')
+dataset10=pd.read_csv("6-1 M-N-0.5-BRB机器学习.CSV")
+dataset11=pd.read_csv("6-2 M-Y-0.5-BRB机器学习.CSV")
+dataset12=pd.read_csv("7-1 L-N-0.5-BRB机器学习.CSV")
+dataset13=pd.read_csv("7-2 L-Y-0.5-BRB机器学习.CSV")
+dataset14=pd.read_csv("8-1 W-N-0.5-BRB机器学习.CSV")
+dataset=pd.concat((dataset1,dataset2,dataset3,dataset4,dataset5,dataset6,dataset7,dataset8,dataset9,dataset10,dataset11,dataset12,dataset13,dataset14))
+
+
+# In[ ]:
+
+
+
+
+
+# In[4]:
+
+
+order=['x','y','K_width','K_l','K_num','H_thickness','Distance','Y_thickness','EE',
+       'UUU','RR','QQ','BB','C1','C2','C3','Gama1','Gama2',
+      'Gama3','MC','Hexin_shuliang']
+
+
+# In[5]:
+
+
+dataset_gang=dataset[order]
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[6]:
+
+
+#abaqus数据处理
+dataset_a=pd.read_csv('单核心开孔.CSV')
+dataset_b=pd.read_csv('单核心无孔.CSV')
+dataset_c=pd.read_csv('双核心开孔.CSV')
+dataset_d=pd.read_csv('双核心无孔.CSV')
+dataset_moni=pd.concat((dataset_a,dataset_b,dataset_c,dataset_d))
+
+
+# In[ ]:
+
+
+
+
+
+# In[7]:
+
+
+dataset_moni1=dataset_moni[order]
+
+
+# In[8]:
+
+
+#dataset_gang.to_excel(os.path.join('D:\归一化后数据', '港哥归一化后数据.xlsx'),index=False)
+
+
+# In[ ]:
+
+
+
+
+
+# In[9]:
+
+
+#dataset_moni1.to_csv(os.path.join('D:\归一化后数据', 'moni.csv'),index=False)
+
+
+# In[10]:
+
+
+dataset_final=pd.concat((dataset_gang,dataset_moni1))
+
+
+# In[ ]:
+
+
+
+
+
+# In[11]:
+
+
+columns=['x','y','K_width','K_l','K_num','H_thickness','Distance','Y_thickness','EE','UUU','RR','QQ','BB','C1','C2','C3','Gama1','Gama2',
+      'Gama3','MC','Hexin_shuliang']
+
+
+# In[12]:
+
+
+for col in columns:
+    scaler=MinMaxScaler()
+    dataset_final[col]=scaler.fit_transform(dataset_final[col].values.reshape(-1,1))
+
+
+# In[ ]:
+
+
+
+
+
+# In[13]:
+
+
+X=dataset_final[['x','K_width','K_l','K_num','H_thickness','Distance','Y_thickness','EE','UUU','RR','QQ','BB','C1','C2','C3','Gama1','Gama2',
+      'Gama3','MC','Hexin_shuliang']]
+Y=dataset_final['y']
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[14]:
+
+
+def creat_dataset (X,Y,seq_len=1004):
+    features=[]
+  
+    targets=[]
+    for i in range(0,int(len(X)),1004):
+        
+        data=X.iloc[i:i+seq_len]
+        label=Y.iloc[i:i+seq_len]
+     
+        features.append(data)
+        targets.append(label)
+    return np.array(features),np.array(targets)
+train_dataset,train_labels=creat_dataset(X,Y,seq_len=1004)
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[15]:
+
+
+train_labels=train_labels.reshape([1471,1004,1])
+
+
+# In[16]:
+
+
+train_x,val_x,train_y,val_y=train_test_split(train_dataset,train_labels,test_size=0.2,shuffle=True,random_state=666)
+
+
+# In[17]:
+
+
+#import shutil
+#if os.path.exists('my_dir'):
+  #  shutil.rmtree('my_dir')
+
+
+# In[ ]:
+
+
+
+
+
+# In[18]:
+
+
+def build_lstm_model(hp):
+    model = keras.Sequential()
+    bidirectional = hp.Choice('bidirectional', values=[True, False])
+    Lstm_Gru=hp.Choice('Lstm_Gru',values=[True,False])
+    num_lstm = hp.Int('num_lstm', min_value=1, max_value=5)
+    num_dense = hp.Int('num_dense', min_value=0, max_value=2)
+    activation_options = ['relu', 'tanh', 'elu', 'exponential', 'gelu', 'selu', 'softplus', 'softsign', 'swish', 'linear']
+    activation_dense = hp.Choice('activation_dense', values=activation_options)
+    
+    dropout_rate = hp.Float('dropout_rate', min_value=0.0, max_value=0.5, step=0.05)
+    dropout_normalization = hp.Choice('dropout_normalization', values=['dropout', 'normalization'])
+   
+    units_lstm1 = hp.Int('units_lstm1', min_value=16, max_value=512, step=4)
+    units_lstm2 = hp.Int('units_lstm2', min_value=16, max_value=512, step=4)
+    units_lstm3 = hp.Int('units_lstm3', min_value=16, max_value=512, step=4)
+    units_lstm4 = hp.Int('units_lstm4', min_value=16, max_value=512, step=4)
+    units_lstm5 = hp.Int('units_lstm5', min_value=16, max_value=512, step=4)
+    units_dense1 = hp.Int('units_dense1', min_value=16, max_value=512, step=4)
+    units_dense2 = hp.Int('units_dense2', min_value=16, max_value=512, step=4)
+    units_dense3 = hp.Int('units_dense3', min_value=16, max_value=512, step=4)
+   
+    optimizers = hp.Choice('optimizers', values=['adam', 'rmsprop', 'adadelta', 'adagrad', 'adamax', 'ftrl', 'sgd', 'nadam'])
+    #binary_crossentropy适合分类任务，建议删除
+    #learn_rate = hp.Float('learn_rate', min_value=1e-4, max_value=1e-2, sampling='LOG')
+    #hp.Choice('learn_rate', values=[1e-2, 1e-3, 1e-4])
+    learn_rate=0.0005
+    batch_size=hp.Int('batch_size',min_value=1,max_value=64,step=1)
+    if Lstm_Gru:
+
+        if bidirectional:
+            model.add(keras.layers.Bidirectional(keras.layers.LSTM(units=units_lstm1, return_sequences=True,
+                                                                   kernel_regularizer=keras.regularizers.l2(0.0001))))
+        else:
+            model.add(keras.layers.LSTM(units=units_lstm1, return_sequences=True,
+                                        kernel_regularizer=keras.regularizers.l2(0.0001)))
+
+        if dropout_normalization == 'dropout':
+            model.add(keras.layers.Dropout(dropout_rate))
+        elif dropout_normalization == 'normalization':
+            model.add(keras.layers.BatchNormalization())
+
+        if num_lstm > 1:
+            if bidirectional:
+                model.add(keras.layers.Bidirectional(keras.layers.LSTM(units=units_lstm2, return_sequences=True,
+                                                                       kernel_regularizer=keras.regularizers.l2(0.0001))))
+            else:
+                model.add(keras.layers.LSTM(units=units_lstm2, return_sequences=True,
+                                            kernel_regularizer=keras.regularizers.l2(0.0001)))
+
+            if dropout_normalization == 'dropout':
+                model.add(keras.layers.Dropout(dropout_rate))
+            elif dropout_normalization == 'normalization':
+                model.add(keras.layers.BatchNormalization())
+
+        if num_lstm > 2:
+            if bidirectional:
+                model.add(keras.layers.Bidirectional(keras.layers.LSTM(units=units_lstm3, return_sequences=True,
+                                                                       kernel_regularizer=keras.regularizers.l2(0.0001))))
+            else:
+                model.add(keras.layers.LSTM(units=units_lstm3, return_sequences=True,
+                                            kernel_regularizer=keras.regularizers.l2(0.0001)))
+
+            if dropout_normalization == 'dropout':
+                model.add(keras.layers.Dropout(dropout_rate))
+            elif dropout_normalization == 'normalization':
+                model.add(keras.layers.BatchNormalization())
+
+        if num_lstm > 3:
+            if bidirectional:
+                model.add(keras.layers.Bidirectional(keras.layers.LSTM(units=units_lstm4, return_sequences=True,
+                                                                       kernel_regularizer=keras.regularizers.l2(0.0001))))
+            else:
+                model.add(keras.layers.LSTM(units=units_lstm4, return_sequences=True,
+                                            kernel_regularizer=keras.regularizers.l2(0.0001)))
+
+            if dropout_normalization == 'dropout':
+                model.add(keras.layers.Dropout(dropout_rate))
+            elif dropout_normalization == 'normalization':
+                model.add(keras.layers.BatchNormalization())
+
+        if num_lstm > 4:
+            if bidirectional:
+                model.add(keras.layers.Bidirectional(keras.layers.LSTM(units=units_lstm5, return_sequences=True,
+                                                                       kernel_regularizer=keras.regularizers.l2(0.0001))))
+            else:
+                model.add(keras.layers.LSTM(units=units_lstm5, return_sequences=True,
+                                            kernel_regularizer=keras.regularizers.l2(0.0001)))
+
+            if dropout_normalization == 'dropout':
+                model.add(keras.layers.Dropout(dropout_rate))
+            elif dropout_normalization == 'normalization':
+                model.add(keras.layers.BatchNormalization())
+
+        if num_dense > 0:
+            model.add(keras.layers.TimeDistributed(keras.layers.Dense(units=units_dense1, activation=activation_dense,
+                                                   kernel_regularizer=keras.regularizers.l2(0.0001))))
+
+            if dropout_normalization == 'dropout':
+                model.add(keras.layers.Dropout(dropout_rate))
+            elif dropout_normalization == 'normalization':
+                model.add(keras.layers.BatchNormalization())
+
+        if num_dense > 1:
+            model.add(keras.layers.TimeDistributed(keras.layers.Dense(units=units_dense2, activation=activation_dense,
+                                                   kernel_regularizer=keras.regularizers.l2(0.0001))))
+
+            if dropout_normalization == 'dropout':
+                model.add(keras.layers.Dropout(dropout_rate))
+            elif dropout_normalization == 'normalization':
+                model.add(keras.layers.BatchNormalization())
+
+        if num_dense > 2:
+            model.add(keras.layers.TimeDistributed(keras.layers.Dense(units=units_dense3, activation=activation_dense,
+                                                   kernel_regularizer=keras.regularizers.l2(0.0001))))
+
+            if dropout_normalization == 'dropout':
+                model.add(keras.layers.Dropout(dropout_rate))
+            elif dropout_normalization == 'normalization':
+                model.add(keras.layers.BatchNormalization())
+
+        model.add(keras.layers.TimeDistributed(keras.layers.Dense(1, activation=None)))
+
+        if optimizers == 'adam':
+            opt = keras.optimizers.Adam(learning_rate=learn_rate)
+        elif optimizers == 'rmsprop':
+            opt = keras.optimizers.RMSprop(learning_rate=learn_rate)
+        elif optimizers == 'adadelta':
+            opt = keras.optimizers.Adadelta(learning_rate=learn_rate)
+        elif optimizers == 'adagrad':
+            opt = keras.optimizers.Adagrad(learning_rate=learn_rate)
+        elif optimizers == 'adamax':
+            opt = keras.optimizers.Adamax(learning_rate=learn_rate)
+        elif optimizers == 'ftrl':
+            opt = keras.optimizers.Ftrl(learning_rate=learn_rate)
+        elif optimizers == 'sgd':
+            opt = keras.optimizers.SGD(learning_rate=learn_rate)
+        elif optimizers == 'nadam':
+            opt = keras.optimizers.Nadam(learning_rate=learn_rate)
+
+        model.compile(optimizer=opt, loss=losses, metrics=['accuracy','mean_squared_error'])
+        return model
+    
+    else:
+        if bidirectional:
+            model.add(keras.layers.Bidirectional(keras.layers.GRU(units=units_lstm1, return_sequences=True,
+                                                                   kernel_regularizer=keras.regularizers.l2(0.0001))))
+        else:
+            model.add(keras.layers.GRU(units=units_lstm1, return_sequences=True,
+                                        kernel_regularizer=keras.regularizers.l2(0.0001)))
+
+        if dropout_normalization == 'dropout':
+            model.add(keras.layers.Dropout(dropout_rate))
+        elif dropout_normalization == 'normalization':
+            model.add(keras.layers.BatchNormalization())
+
+        if num_lstm > 1:
+            if bidirectional:
+                model.add(keras.layers.Bidirectional(keras.layers.GRU(units=units_lstm2, return_sequences=True,
+                                                                       kernel_regularizer=keras.regularizers.l2(0.0001))))
+            else:
+                model.add(keras.layers.GRU(units=units_lstm2, return_sequences=True,
+                                            kernel_regularizer=keras.regularizers.l2(0.0001)))
+
+            if dropout_normalization == 'dropout':
+                model.add(keras.layers.Dropout(dropout_rate))
+            elif dropout_normalization == 'normalization':
+                model.add(keras.layers.BatchNormalization())
+
+        if num_lstm > 2:
+            if bidirectional:
+                model.add(keras.layers.Bidirectional(keras.layers.GRU(units=units_lstm3, return_sequences=True,
+                                                                       kernel_regularizer=keras.regularizers.l2(0.0001))))
+            else:
+                model.add(keras.layers.GRU(units=units_lstm3, return_sequences=True,
+                                            kernel_regularizer=keras.regularizers.l2(0.0001)))
+
+            if dropout_normalization == 'dropout':
+                model.add(keras.layers.Dropout(dropout_rate))
+            elif dropout_normalization == 'normalization':
+                model.add(keras.layers.BatchNormalization())
+
+        if num_lstm > 3:
+            if bidirectional:
+                model.add(keras.layers.Bidirectional(keras.layers.GRU(units=units_lstm4, return_sequences=True,
+                                                                       kernel_regularizer=keras.regularizers.l2(0.0001))))
+            else:
+                model.add(keras.layers.GRU(units=units_lstm4, return_sequences=True,
+                                            kernel_regularizer=keras.regularizers.l2(0.0001)))
+
+            if dropout_normalization == 'dropout':
+                model.add(keras.layers.Dropout(dropout_rate))
+            elif dropout_normalization == 'normalization':
+                model.add(keras.layers.BatchNormalization())
+
+        if num_lstm > 4:
+            if bidirectional:
+                model.add(keras.layers.Bidirectional(keras.layers.GRU(units=units_lstm5, return_sequences=True,
+                                                                       kernel_regularizer=keras.regularizers.l2(0.0001))))
+            else:
+                model.add(keras.layers.GRU(units=units_lstm5, return_sequences=True,
+                                            kernel_regularizer=keras.regularizers.l2(0.0001)))
+
+            if dropout_normalization == 'dropout':
+                model.add(keras.layers.Dropout(dropout_rate))
+            elif dropout_normalization == 'normalization':
+                model.add(keras.layers.BatchNormalization())
+
+        if num_dense > 0:
+            model.add(keras.layers.TimeDistributed(keras.layers.Dense(units=units_dense1, activation=activation_dense,
+                                                   kernel_regularizer=keras.regularizers.l2(0.0001))))
+
+            if dropout_normalization == 'dropout':
+                model.add(keras.layers.Dropout(dropout_rate))
+            elif dropout_normalization == 'normalization':
+                model.add(keras.layers.BatchNormalization())
+
+        if num_dense > 1:
+            model.add(keras.layers.TimeDistributed(keras.layers.Dense(units=units_dense2, activation=activation_dense,
+                                                   kernel_regularizer=keras.regularizers.l2(0.0001))))
+
+            if dropout_normalization == 'dropout':
+                model.add(keras.layers.Dropout(dropout_rate))
+            elif dropout_normalization == 'normalization':
+                model.add(keras.layers.BatchNormalization())
+
+        if num_dense > 2:
+            model.add(keras.layers.TimeDistributed(keras.layers.Dense(units=units_dense3, activation=activation_dense,
+                                                   kernel_regularizer=keras.regularizers.l2(0.0001))))
+
+            if dropout_normalization == 'dropout':
+                model.add(keras.layers.Dropout(dropout_rate))
+            elif dropout_normalization == 'normalization':
+                model.add(keras.layers.BatchNormalization())
+
+        model.add(keras.layers.TimeDistributed(keras.layers.Dense(1, activation=None)))
+
+        if optimizers == 'adam':
+            opt = keras.optimizers.Adam(learning_rate=learn_rate)
+        elif optimizers == 'rmsprop':
+            opt = keras.optimizers.RMSprop(learning_rate=learn_rate)
+        elif optimizers == 'adadelta':
+            opt = keras.optimizers.Adadelta(learning_rate=learn_rate)
+        elif optimizers == 'adagrad':
+            opt = keras.optimizers.Adagrad(learning_rate=learn_rate)
+        elif optimizers == 'adamax':
+            opt = keras.optimizers.Adamax(learning_rate=learn_rate)
+        elif optimizers == 'ftrl':
+            opt = keras.optimizers.Ftrl(learning_rate=learn_rate)
+        elif optimizers == 'sgd':
+            opt = keras.optimizers.SGD(learning_rate=learn_rate)
+        elif optimizers == 'nadam':
+            opt = keras.optimizers.Nadam(learning_rate=learn_rate)
+
+        model.compile(optimizer=opt, loss='mean_squared_error', metrics=['mean_squared_error'])
+        return model
+
+
+
+
+# In[19]:
+
+
+#log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+#tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+
+
+# In[20]:
+
+
+tuner = BayesianOptimization(
+    build_lstm_model,
+    objective='val_mean_squared_error',
+    max_trials=400,
+    #num_initial_points=40,#进行贝叶斯优化之前随机挑选40个点，若未指定，则选用超参数空间的3倍
+    executions_per_trial=1,
+    directory='my_dir5',
+    project_name='lstm_hyperparameter_tuning5')
+
+
+# In[21]:
+
+
+time1=time.time()
+tuner.search(train_x, train_y, epochs=300, validation_data=(val_x, val_y))
+time2=time.time()
+print(time2-time1)
+best_hps = tuner.get_best_hyperparameters(num_trials=20)[0]
+
+
+# In[23]:
+
+
+for trial_id in tuner.oracle.trials:
+    trial = tuner.oracle.get_trial(trial_id)
+    print(trial_id)
+    print(trial.hyperparameters.values)
+    print(trial.score)
+
+
+# In[24]:
+
+
+print(best_hps.values)
+
+
+# In[40]:
+
+
+# 获取最好的20个尝试
+best_trials = tuner.oracle.get_best_trials(20)
+
+# 打印每个尝试的ID和分数
+for trial in best_trials:
+    print(f"Trial ID: {trial.trial_id},{trial.hyperparameters.values} Score: {trial.score}")
+
+
+# In[20]:
+
+
+tuner1 = BayesianOptimization(
+    build_lstm_model,
+    objective='val_mean_squared_error',
+    max_trials=400,
+    executions_per_trial=1,
+    directory='my_dir4',
+    project_name='lstm_hyperparameter_tuning4'
+)
+
+
+
+# In[21]:
+
+
+for trial_id in tuner1.oracle.trials:
+    trial = tuner1.oracle.get_trial(trial_id)
+    print(trial_id)
+    print(trial.hyperparameters.values)
+    print(trial.score)
+
+
+# In[22]:
+
+
+best_hps = tuner1.get_best_hyperparameters(num_trials=20)[0]
+
+
+# In[24]:
+
+
+print(best_hps.values)
+
+
+# In[26]:
+
+
+# 获取最好的20个尝试
+best_trials = tuner1.oracle.get_best_trials(20)
+
+# 打印每个尝试的ID和分数
+for trial in best_trials:
+    print(f"Trial ID: {trial.trial_id},{trial.hyperparameters.values} Score: {trial.score}")
+
+
+# In[36]:
+
+
+hypermodel = tuner.hypermodel.build(best_hps)
+
+
+# In[37]:
+
+
+hypermodel.build(input_shape=(None,1004,20))
+
+
+# In[38]:
+
+
+hypermodel.summary()
+
+
+# In[22]:
+
+
+hypermodel.fit(train_x, train_y, epochs=1000, validation_data=(val_x, val_y))
+
+
+# In[ ]:
+
+
+
+
